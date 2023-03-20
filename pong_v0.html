@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pong Game</title>
+  <style>
+    #canvas {
+      border: 1px solid black;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: black;
+    }
+    #splash {
+      font-family: Arial;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: black;
+      z-index: 1;
+    }
+
+    #splash h1 {
+      color: white;
+      text-align: center;
+      font-size: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="600" height="400"></canvas>
+  <div id="splash">
+    <h1 id="splashText">Press "space" to start</h1>
+  </div>
+  <script>
+    // Define variables
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+
+    var gameStarted = false;
+    var gamePaused = false;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var dx = 5;
+    var dy = -5;
+    var paddleHeight = 10;
+    var paddleWidth = canvas.width/4;
+    var paddleX = (canvas.width-paddleWidth)/2;
+    var rightPressed = false;
+    var leftPressed = false;
+    var playerScore = 0;
+    var level = 1;
+
+    // Add event listeners for key presses
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    function keyDownHandler(e) {
+      if(e.keyCode == 39) {
+        rightPressed = true;
+      }
+      else if(e.keyCode == 37) {
+        leftPressed = true;
+      }
+      else if(e.keyCode == 32 && !gameStarted) {
+        gameStarted = true;
+        document.getElementById("splash").style.visibility = "hidden";
+      }
+      else if(e.keyCode == 32 && gameStarted && !gamePaused) {
+        gamePaused = true;
+        document.getElementById("splash").style.visibility = "visible";
+        document.getElementById("splashText").innerHTML = "Paused. Press 'space' to continue.";
+      }
+      else if(e.keyCode == 32 && gameStarted && gamePaused) {
+        gamePaused = false;
+        document.getElementById("splash").style.visibility = "hidden";
+      }
+    }
+
+    function keyUpHandler(e) {
+      if(e.keyCode == 39) {
+        rightPressed = false;
+      }
+      else if(e.keyCode == 37) {
+        leftPressed = false;
+      }
+    }
+
+    // Draw ball function
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    // Draw paddle function
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    // Draw score
+    function drawScore() {
+      ctx.font = '20px Arial';
+      ctx.fillStyle = '#fff';
+      var highScore = localStorage.getItem("highScore") || 0;
+      var highLevel = localStorage.getItem("highLevel") || 0;
+      ctx.fillText(`Score/Level: ${playerScore}/${level}   -   Best Score/Level: ${highScore}/${highLevel}   -   Press 'space' to pause.`, 20, 20);
+    }
+
+    function saveHighScore(score) {
+      // Get existing high score from local storage
+      var highScore = localStorage.getItem("highScore") || 0;
+      var highLevel = localStorage.getItem("highLevel") || 0;
+
+      // If there is no high score in local storage or if the player's score is greater than the existing high score
+      if (score > parseInt(highScore)) {
+        // Save the new high score to local storage
+        localStorage.setItem("highScore", score);
+        localStorage.setItem("highLevel", level);
+      }
+    }
+
+    function levelUp() {
+      if (level == 1){
+        paddleWidth *= 0.95;
+        // Ensure that the new width doesn't fall below a minimum and level up if it's the case
+        if (paddleWidth <= canvas.width/10){
+          paddleWidth = canvas.width/7;
+          level++;
+        }
+      }
+      else {
+        
+        dx *= 1.06;
+        dy *= 1.06;
+        if (Math.floor(Math.abs(dy)) % (6*level) == 0){
+          dx *= 0.6;
+          dy *= 0.6;
+          level++;
+        }
+      }
+    }
+
+
+    // Main draw function
+    function draw() {
+      if (!gameStarted || gamePaused) {
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBall();
+      drawPaddle();
+      drawScore();
+
+      // Ball bouncing off walls
+      if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+        dx = -dx;
+      }
+      if(y + dx < ballRadius) {
+        dy = -dy;
+      }
+
+      else if(y + dx > canvas.height-ballRadius) {
+        // Ball hitting paddle
+        if(x > paddleX && x < paddleX + paddleWidth) {
+          playerScore++;
+          levelUp();
+          dy = -dy;
+        }
+        else {
+          alert("Game Over! Your score is " + playerScore);
+          saveHighScore(playerScore);
+          document.location.reload();
+          clearInterval(interval); // Needed for Chrome to end game
+        }
+      }
+
+      // Paddle movement
+      if(rightPressed && paddleX < canvas.width-paddleWidth) {
+        paddleX += 15;
+      }
+      else if(leftPressed && paddleX > 0) {
+        paddleX -= 15;
+      }
+
+      x += dx;
+      y += dy;
+    }
+
+    // Set interval to call the draw function
+    var interval = setInterval(draw, 10);
+
+  </script>
+</body>
+</html>
